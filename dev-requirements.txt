@@ -1,0 +1,28 @@
+fastapi[all]
+fastapi-jwt-auth
+fastapi-jwt-auth[asymmetric]
+
+# database related
+aioredis
+motor
+# fastapi-cache2
+
+# logging & error-catching related
+elastic-apm
+python-logstash-async
+sentry_sdk
+
+
+# misc
+openpyxl
+psutil
+
+# devlopment
+httpx
+pytest
+pytest-asyncio
+pytest-order
+pytest-cov
+flake8
+black
+pre-commit

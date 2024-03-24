@@ -1,0 +1,13 @@
+fastapi[all]
+fastapi-jwt-auth
+fastapi-jwt-auth[asymmetric]
+aioredis
+motor
+elastic-apm
+python-logstash-async
+sentry_sdk
+openpyxl
+psutil
+pydantic==1.10.9
+structlog
+asgi_correlation_id
