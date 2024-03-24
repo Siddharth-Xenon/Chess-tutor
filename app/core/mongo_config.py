@@ -6,5 +6,9 @@ class MongoConfig:
     MONGO_PROD_DATABASE: str = env_with_secrets.get(
         "MONGO_PROD_DATABASE", "template_db"
     )
+    print(MONGO_PROD_DATABASE)
+    MONGO_AUTH_PROD_DATABASE: str = env_with_secrets.get(
+        "MONGO_AUTH_PROD_DATABASE", "template_db"
+    )
 
     # List all collections constants here

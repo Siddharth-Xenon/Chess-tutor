@@ -8,13 +8,15 @@ from pydantic import BaseSettings
 
 load_dotenv(".env")
 
+
 unwanted_prefixes = [
     "ORG_STAG_",
     "STAG_ORG_",
     "ORG_PROD_",
     "PROD_ORG_",
-    "STAG_TEMPLATE_",
-    "PROD_TEMPLATE_",
+    "STAG_COMMUNITY_",
+    "PROD_COMMUNITY_",
+    "STAG_ZUPAL_",
     "ORG_",
 ]
 for var in glob("/run/secrets/*"):
@@ -47,12 +49,35 @@ class Settings(BaseSettings):
 
     ENV: str = env.get("ENV", "DEV")
 
+    RABBIT_MQ_URL: str = env.get("RABBIT_MQ_URL", "memory://")
+    USER_EVENT_CELERY_QUEUE = env.get(
+        "USER_EVENT_CELERY_QUEUE", "user_event_celery_queue"
+    )
+    NOTIFICATIONS_CELERY_QUEUE = env.get("NOTIFICATIONS_CELERY_QUEUE", "")
+    HELICONE_API_KEY: str = env.get("HELICONE_API_KEY", "")
+
     class Config:
         case_sensitive = True
 
 
 settings = Settings()
 env_with_secrets = env
+
+
+class AzureStorageConfig:
+    settings = Settings()
+    AZURE_BLOB_CONN_STRING: str = env_with_secrets.get("AZURE_BLOB_CONN_STRING", "")
+    AZURE_BLOB_CONTAINER_NAME: str = "community"
+
+
+class OPENAIConfig:
+    settings = Settings()
+    AZURE_OPENAI_JPEAST_API_KEY: str = env_with_secrets.get(
+        "AZURE_OPENAI_JPEAST_API_KEY", ""
+    )
+    AZURE_OPENAI_JPEAST_API_BASE: str = env_with_secrets.get(
+        "AZURE_OPENAI_JPEAST_API_BASE", ""
+    )
 
 
 class RedisConfig:

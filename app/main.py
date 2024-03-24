@@ -1,7 +1,5 @@
 import os
 import time
-import uuid
-from datetime import datetime
 
 import jwt
 import sentry_sdk
@@ -9,6 +7,7 @@ import structlog
 import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
+from elasticapm.contrib.starlette import ElasticAPM, make_apm_client
 from fastapi import FastAPI, Response
 from fastapi_jwt_auth.auth_jwt import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
@@ -66,26 +65,7 @@ async def ping():
     return {"ping": "pong"}
 
 
-@app.middleware("http")
-async def log_incoming_request(request: Request, call_next):
-    id = uuid.uuid4()
-    start_time = datetime.utcnow()
-    request.state.request_id = str(id)
-    response = await call_next(request)
-    process_time = datetime.utcnow() - start_time
-    if request.url.path != "/ping":
-        default_logger.info(
-            "Request completed",
-            extra={
-                "request_id": str(id),
-                "response_time_in_milliseconds": process_time.microseconds
-                / 1000,  # noqa E501
-                "status_code": response.status_code,
-                "request_path": request.url.path,
-            },
-        )
-    return response
-
+elastic_apm = None
 
 app.include_router(api.api_router)
 
@@ -207,6 +187,8 @@ async def catch_all_exception_handler(request: Request, exc: Exception):
             "request_id": request_id,
         },
     )
+    if elastic_apm:
+        elastic_apm.capture_exception()
     return JSONResponse(
         status_code=500,
         content={
@@ -215,6 +197,27 @@ async def catch_all_exception_handler(request: Request, exc: Exception):
             "request_id": request_id,
         },
     )
+
+
+if "ELASTIC_APM_SERVER_URL" in env_with_secrets:
+    try:
+        elastic_apm = make_apm_client(
+            {
+                "SERVICE_NAME": settings.PROJECT_NAME,
+                "SERVER_URL": env_with_secrets["ELASTIC_APM_SERVER_URL"],
+                "SECRET_TOKEN": env_with_secrets["ELASTIC_APM_SECRET_TOKEN"],
+                "ENVIRONMENT": settings.ENV,
+                "TRANSACTIONS_IGNORE_PATTERNS": [
+                    "^GET /docs",
+                    "^GET /openapi.json",
+                    "^GET /ping",
+                ],
+                "SANITIZE_FIELD_NAMES": ["*token*", "token", "authorization"],
+            }
+        )
+        app.add_middleware(ElasticAPM, client=elastic_apm)
+    except Exception as e:
+        default_logger(f"Problem Setting Up Elastic APM => {str(e)}")
 
 
 app.add_middleware(CorrelationIdMiddleware)
