@@ -27,7 +27,8 @@ async def pgn(
         pgn_dict["Moves"] = moves_dict
         save_result = await app.save_pgn_to_db(pgn_dict)
         if save_result:
-            return {"message": "PGN saved successfully"}
+            pgn_dict.pop("_id", None)  # Remove ObjectId which is not serializable
+            return {"message": "PGN saved successfully", "data": pgn_dict}
         else:
             return {"message": "Failed to save PGN", "status": "error"}, 500
 
