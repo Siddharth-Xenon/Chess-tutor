@@ -24,6 +24,7 @@ async def pgn(
         pgn_dict = app.pgn_to_dict(pgn_string)
 
         moves_dict = app.moves_to_dict(pgn_dict["Moves"][0])
+        print(moves_dict)
         pgn_dict["Moves"] = moves_dict
         save_result = await app.save_pgn_to_db(pgn_dict)
         if save_result:
