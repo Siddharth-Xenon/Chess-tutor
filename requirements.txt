@@ -13,3 +13,5 @@ structlog
 asgi_correlation_id
 azure-storage-blob
 openai
+python-chess
+stockfish
