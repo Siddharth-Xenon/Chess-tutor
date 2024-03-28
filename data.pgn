@@ -1,0 +1,32 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2024.02.25"]
+[Round "-"]
+[White "Adeeb9"]
+[Black "Aditya_NIT"]
+[Result "1-0"]
+[CurrentPosition "r4r2/3p1ppk/pp4n1/8/1P6/P3R3/R4PP1/2BQ2K1 b - -"]
+[Timezone "UTC"]
+[ECO "A40"]
+[ECOUrl "https://www.chess.com/openings/Queens-Pawn-Opening-English-Defense-3.Nc3-Bb7-4.e4"]
+[UTCDate "2024.02.25"]
+[UTCTime "13:03:55"]
+[WhiteElo "1473"]
+[BlackElo "1495"]
+[TimeControl "600"]
+[Termination "Adeeb9 won by resignation"]
+[StartTime "13:03:55"]
+[EndDate "2024.02.25"]
+[EndTime "13:12:13"]
+[Link "https://www.chess.com/game/live/102605386095"]
+[WhiteUrl "https://www.chess.com/bundles/web/images/noavatar_l.84a92436.gif"]
+[WhiteCountry "69"]
+[WhiteTitle ""]
+[BlackUrl "https://www.chess.com/bundles/web/images/noavatar_l.84a92436.gif"]
+[BlackCountry "69"]
+[BlackTitle ""]
+
+1. e4 b6 2. c4 Bb7 3. Nc3 e6 4. d4 a6 5. Nf3 Nf6 6. Bd3 Bb4 7. d5 O-O 8. O-O c6
+9. a3 Be7 10. Re1 cxd5 11. exd5 exd5 12. cxd5 Nxd5 13. Nxd5 Bxd5 14. Bxh7+ Kxh7
+15. Qxd5 Nc6 16. b4 Bf6 17. Ra2 Ne7 18. Qe4+ Ng6 19. h4 Bxh4 20. Nxh4 Qxh4 21.
+Qd5 Qg4 22. Re3 Qd1+ 23. Qxd1 1-0
