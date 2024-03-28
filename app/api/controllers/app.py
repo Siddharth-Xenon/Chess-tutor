@@ -5,7 +5,7 @@ import chess.engine
 import chess.pgn
 from fastapi import HTTPException
 
-from app.api.utils import chess_utils
+from app.api.utils import chess_utils, openai_utils
 
 
 async def delete_this_route() -> dict:
@@ -33,8 +33,15 @@ async def analyse_pgn(pgn_string):
         analysis = await get_best_moves(pgn_string)
         critical_moments = await chess_utils.get_critical_moments(analysis, pgn_string)
         critical_moments = {str(k): v for k, v in critical_moments.items()}
+        openai_analysis = await openai_utils.analyze_chess_game(
+            pgn_string, analysis, critical_moments
+        )
         await chess_utils.save_analysis(
-            analysis, pgn_dict["id"], critical_moments, pgn_dict["Moves"]
+            analysis,
+            pgn_dict["id"],
+            critical_moments,
+            pgn_dict["Moves"],
+            openai_analysis,
         )
 
         if save_result:
@@ -43,6 +50,7 @@ async def analyse_pgn(pgn_string):
                 "message": "PGN saved successfully",
                 "data": pgn_dict,
                 "critical_moments": critical_moments,
+                "openai_analysis": openai_analysis,
             }
 
         else:

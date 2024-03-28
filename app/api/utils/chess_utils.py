@@ -157,7 +157,11 @@ async def save_pgn_to_db(pgn_dict):
 
 
 async def save_analysis(
-    analysis: str, pgn_id: str, critical_moments: dict, moves: dict
+    analysis: str,
+    pgn_id: str,
+    critical_moments: dict,
+    moves: dict,
+    openai_analysis: dict,
 ):
     analysis_dict = {
         "id": generate_hex_uuid(),
@@ -165,6 +169,7 @@ async def save_analysis(
         "moves": moves,
         "critical_moments": critical_moments,
         "analysis": analysis,
+        "openai_analysis": openai_analysis,
     }
 
     try:
