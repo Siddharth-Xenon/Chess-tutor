@@ -1,12 +1,13 @@
-import uuid
 import re
-
-from app.db.mongo_client import ZuMongoClient
+import uuid
 from typing import List, Tuple
 
 import chess
 import chess.engine
 import chess.pgn
+
+from app.db.mongo_client import ZuMongoClient
+
 
 async def validate_pgn_format(pgn_string: str) -> bool:
     """
@@ -56,6 +57,7 @@ async def validate_pgn_format(pgn_string: str) -> bool:
     match = re.match(pgn_pattern, pgn_string, re.VERBOSE)
 
     return bool(match)
+
 
 def pgn_to_dict(pgn_string: str) -> dict:
     """
@@ -107,6 +109,7 @@ def generate_hex_uuid():
     """
     return uuid.uuid4().hex
 
+
 def moves_to_dict(moves_str: str) -> dict:
     """
     Converts a string of moves separated by move identifiers into a dictionary with move numbers as keys.
@@ -148,7 +151,7 @@ async def save_pgn_to_db(pgn_dict):
         print("PGN data saved successfully.")
     except Exception as e:
         print(f"Failed to save PGN data to DB. Error: {e}")
-        
+
 
 async def get_best_move(game, move_number):
     """
@@ -193,6 +196,7 @@ async def get_best_move(game, move_number):
 
     return result.move.uci(), score
 
+
 async def get_best_moves(game) -> List[Tuple[str, int]]:
     """
     Analyzes the entire game, predicting the best move at each position.
@@ -225,3 +229,31 @@ async def get_best_moves(game) -> List[Tuple[str, int]]:
             best_moves.append((result.move.uci(), score))
 
     return best_moves
+
+
+def pgn_to_moves_dict(pgn_string: str) -> dict:
+    """
+    Converts a string of moves separated by move identifiers into a dictionary with move numbers as keys and moves as values.
+
+    Args:
+        pgn_string (str): A string of moves separated by identifiers like "1.", "2.", ...
+
+    Returns:
+        dict: A dictionary with move numbers as keys and moves as values.
+        {1: 'e4', 2: 'b6', 3: 'c4', 4: 'Bb7', 5: 'Nc3', 6: 'e6'}
+    """
+    moves_dict = {}
+    # Split the string into individual moves based on the move number identifiers
+    moves_list = [
+        move.strip() for move in re.split(r"\d+\.", pgn_string) if move.strip()
+    ]
+    move_counter = 1
+    for move in moves_list:
+        # Split the move into individual parts, might include captures, checks, etc.
+        individual_moves = move.split(" ")
+        # Filter out empty strings that may result from extra spaces
+        individual_moves = [move for move in individual_moves if move]
+        for individual_move in individual_moves:
+            moves_dict[move_counter] = individual_move
+            move_counter += 1
+    return moves_dict

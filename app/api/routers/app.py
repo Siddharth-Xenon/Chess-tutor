@@ -1,7 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi_jwt_auth import AuthJWT
-import chess.pgn
-import io
 
 from app.api.controllers import app
 
@@ -17,17 +15,24 @@ async def delete_this_route(
 
 
 @router.post("/pgn")
-async def validate_pgn(pgn_string: str):
-    return await app.validate_pgn(pgn_string=pgn_string)
-        
-            
+async def analyse_pgn(pgn_string: str):
+    return await app.analyse_pgn(pgn_string=pgn_string)
+
+
+# @router.get("/get_game_analysis")
+# async def get_game_analysis(game_id: str):
+#     return await app.get_analyse_game(game_id=game_id)
+
+
 @router.get("/board/{move_no}")
 async def get_board_at_move(move_no: int, pgn_string: str):
-   return await app.get_board_at_move(move_no=move_no, pgn_string=pgn_string)
-    
+    return await app.get_board_at_move(move_no=move_no, pgn_string=pgn_string)
+
+
 @router.get("/get_best_move")
 async def get_best_move(pgn_string: str, move_no: int):
     return await app.get_best_move(pgn_string=pgn_string, move_no=move_no)
+
 
 @router.get("/get_best_moves")
 async def getBestMoves(pgn_string: str):
