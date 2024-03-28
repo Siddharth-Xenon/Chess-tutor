@@ -8,6 +8,36 @@ gpt_35_turbo = AsyncOpenAI(
     api_key=OPENAIConfig.OPENAI_KEY,
 )
 
+async def analyze_chess_game(pgn_str, analysis, blunders):
+    system = (
+        "Hey chess analysis expert"
+        "Analyze each move and explain why they are the best move, a good move, mistakes, or blunders. "
+        "You are given the pgn of the game as 'pgn_str', stockfish analysis as 'analysis' and blunders as 'blunders', also explain "
+        "Return a json response in the following format as an example: "
+        '{"1":"e4 is known for leading to an open and tactical game, one of the oldest and most studied openings in chess."}'
+    )
+
+    user = (
+        f"<pgn_str>{pgn_str}</pgn_str> <analysis>{analysis}</analysis> <blunders>{blunders}</blunders>"
+    )
+
+    response = await gpt_35_turbo.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": system,
+            },
+            {
+                "role": "user",
+                "content": user,
+            },
+        ],
+        max_tokens=500,  # Adjust as needed for the length of response you expect
+    )
+    return json_repair.loads(response.choices[0].message.content)
+
+
 
 async def generate_analysis(
     # moves: dict,
