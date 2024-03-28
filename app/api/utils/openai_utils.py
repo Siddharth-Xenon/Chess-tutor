@@ -5,22 +5,15 @@ from openai import AsyncOpenAI
 from app.core.config import OPENAIConfig, settings
 
 gpt_35_turbo = AsyncOpenAI(
-    api_key=OPENAIConfig.AZURE_OPENAI_JPEAST_API_KEY,
-    base_url="https://oai.hconeai.com/openai/deployments/gpt-35-turbo",
-    default_headers={
-        "Helicone-OpenAI-Api-Base": OPENAIConfig.AZURE_OPENAI_JPEAST_API_BASE,
-        "Helicone-Auth": f"Bearer {settings.HELICONE_API_KEY}",
-        "api-key": OPENAIConfig.AZURE_OPENAI_JPEAST_API_KEY,
-    },
-    default_query={"api-version": "2023-12-01-preview"},
+    api_key=OPENAIConfig.OPENAI_KEY,
 )
 
 
 async def generate_analysis(
-    moves: dict,
-    pgn_id: str,
-    max_tokens: int = 1500,
-    temperature: float = 0.25,
+    # moves: dict,
+    # pgn_id: str,
+    max_tokens: int = 500,
+    # temperature: float = 0.25,
 ) -> str:
     """
     Generates answer based on the given question using the GPT-35 Turbo model.
@@ -34,7 +27,7 @@ async def generate_analysis(
         str: The generated text.
     """
     response = await gpt_35_turbo.chat.completions.create(
-        model="gpt-35-turbo",
+        model="gpt-3.5-turbo",
         # response_format={"type": "json_object"},
         messages=[
             {
@@ -43,17 +36,10 @@ async def generate_analysis(
             },
             {
                 "role": "user",
-                "content": "Grade: <grade></grade>, Subject: <subject></subject>, User question is: <question></question>.",
+                "content": "Grade: <grade>8</grade>, Subject: <subject>History</subject>, User question is: <question>Who was Babar?</question>.",
             },
         ],
         max_tokens=max_tokens,
-        extra_headers={
-            "Helicone-Auth": f"Bearer {settings.HELICONE_API_KEY}",
-            "Helicone-Target-Url": OPENAIConfig.AZURE_OPENAI_JPEAST_API_BASE,
-            "Helicone-Target-Provider": "Azure",
-            "Helicone-Property-agent_id": "zuai_community_agent",
-            "Helicone-User-Id": "zuai_community_user",
-        },
     )
     # Convert the string response to a JSON object
     response_content = json_repair.loads(response.choices[0].message.content)
@@ -62,7 +48,7 @@ async def generate_analysis(
 
 
 # Example usage:
-# answer = asyncio.run(generate_answer("What is torque in rotational motion"))
+# answer = asyncio.run(generate_analysis())
 
 # print(answer)
 

@@ -72,8 +72,8 @@ class AzureStorageConfig:
 
 class OPENAIConfig:
     settings = Settings()
-    AZURE_OPENAI_JPEAST_API_KEY: str = env_with_secrets.get(
-        "AZURE_OPENAI_JPEAST_API_KEY", ""
+    OPENAI_KEY: str = env_with_secrets.get(
+        "OPENAI_KEY", ""
     )
     AZURE_OPENAI_JPEAST_API_BASE: str = env_with_secrets.get(
         "AZURE_OPENAI_JPEAST_API_BASE", ""
