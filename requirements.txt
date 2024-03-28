@@ -15,3 +15,4 @@ azure-storage-blob
 openai
 python-chess
 stockfish
+json-repair
