@@ -5,6 +5,7 @@ from typing import List, Tuple
 import chess
 import chess.engine
 import chess.pgn
+from fastapi import HTTPException
 
 from app.db.mongo_client import ZuMongoClient
 
@@ -147,10 +148,32 @@ async def save_pgn_to_db(pgn_dict):
     # and 'pgn_dict' contains all necessary data including a unique 'id'
     try:
         # Insert the PGN data into the 'pgn_data' collection
-        await ZuMongoClient.insert_one(col="pgn_data", insert_data=pgn_dict)
+        await ZuMongoClient.insert_one(
+            col="pgn_data", insert_data=pgn_dict, handle_exception=False
+        )
         print("PGN data saved successfully.")
     except Exception as e:
         print(f"Failed to save PGN data to DB. Error: {e}")
+
+
+async def save_analysis(
+    analysis: str, pgn_id: str, critical_moments: dict, moves: dict
+):
+    analysis_dict = {
+        "id": generate_hex_uuid(),
+        "pgn_id": pgn_id,
+        "moves": moves,
+        "critical_moments": critical_moments,
+        "analysis": analysis,
+    }
+
+    try:
+        await ZuMongoClient.insert_one(
+            col="analysis", insert_data=analysis_dict, handle_exception=False
+        )
+        print("Analysis saved successfully.")
+    except Exception as e:
+        print(f"Failed to save analysis to DB. Error: {e}")
 
 
 async def get_best_move(game, move_number):
@@ -231,7 +254,7 @@ async def get_best_moves(game) -> List[Tuple[str, int]]:
     return best_moves
 
 
-def pgn_to_moves_dict(pgn_string: str) -> dict:
+async def pgn_to_moves_dict(pgn_string: str) -> dict:
     """
     Converts a string of moves separated by move identifiers into a dictionary with move numbers as keys and moves as values.
 
@@ -257,3 +280,47 @@ def pgn_to_moves_dict(pgn_string: str) -> dict:
             moves_dict[move_counter] = individual_move
             move_counter += 1
     return moves_dict
+
+
+def find_critical_moments(analysis):
+    critical_moments = []
+    # Iterate through analysis list, except the last item to avoid index out of range
+    for i in range(len(analysis) - 1):
+        # Calculate the absolute difference in evaluation between consecutive moves
+        eval_diff = abs(analysis[i + 1][1] - analysis[i][1])
+        # Check if the difference is at least 100 points
+        if eval_diff >= 200:
+            # Calculate move number; add 1 because indexing starts at 0, then divide by 2 and round up
+            critical_moments.append(i + 1)
+    return critical_moments
+
+
+# Find and print the critical moments
+async def get_critical_moments(analysis: str, pgn: str) -> dict:
+    critical_moments = find_critical_moments(analysis)
+    moves_dict = await pgn_to_moves_dict(pgn)
+    critical_moments_dict = {
+        i + 1: moves_dict.get(i + 1, "N/A") for i in critical_moments
+    }
+    print(critical_moments_dict)
+    return critical_moments_dict
+
+
+async def fetch_all_documents(collection: str):
+    try:
+        cursor = ZuMongoClient.find(
+            col=collection,
+            filter_data={},
+            project={"id": 1, "pgn_id": 1, "moves": 1, "critical_moments": 1},
+        )
+        documents = await cursor.to_list(length=None)
+        return documents
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch documents from {collection}: {str(e)}",
+        )
+
+
+async def fetch_analysis(pgn_id: str):
+    return await ZuMongoClient.find_one(col="analysis", filter_data={"pgn_id": pgn_id})

@@ -19,9 +19,14 @@ async def analyse_pgn(pgn_string: str):
     return await app.analyse_pgn(pgn_string=pgn_string)
 
 
-# @router.get("/get_game_analysis")
-# async def get_game_analysis(game_id: str):
-#     return await app.get_analyse_game(game_id=game_id)
+@router.get("/get_analysis_feed")
+async def get_analysis_feed():
+    return await app.get_analysis_feed()
+
+
+@router.get("/get_analysis_by_id")
+async def get_analysis_by_id(pgn_id: str):
+    return await app.get_analysis_by_id(pgn_id=pgn_id)
 
 
 @router.get("/board/{move_no}")

@@ -26,17 +26,31 @@ async def analyse_pgn(pgn_string):
     if is_valid_pgn:
         pgn_dict = chess_utils.pgn_to_dict(pgn_string)
 
-        moves_dict = chess_utils.moves_to_dict(pgn_dict["Moves"][0])
-        pgn_dict["Moves"] = moves_dict
+        moves_dict = await chess_utils.pgn_to_moves_dict(pgn_dict["Moves"][0])
+        if "Moves" in pgn_dict:
+            pgn_dict["Moves"] = {str(k): v for k, v in moves_dict.items()}
         save_result = await save_pgn_to_db(pgn_dict)
-
-        # best_moves = await get_best_moves(pgn_string)
+        analysis = await get_best_moves(pgn_string)
+        critical_moments = await chess_utils.get_critical_moments(analysis, pgn_string)
+        critical_moments = {str(k): v for k, v in critical_moments.items()}
+        await chess_utils.save_analysis(
+            analysis, pgn_dict["id"], critical_moments, pgn_dict["Moves"]
+        )
 
         if save_result:
             pgn_dict.pop("_id", None)  # Remove ObjectId which is not serializable
-            return {"message": "PGN saved successfully", "data": pgn_dict}
+            return {
+                "message": "PGN saved successfully",
+                "data": pgn_dict,
+                "critical_moments": critical_moments,
+            }
+
         else:
-            return {"message": "Failed to save PGN", "status": "error"}, 500
+            return {
+                "message": "Failed to save PGN",
+                "data": pgn_dict,
+                "critical_moments": critical_moments,
+            }, 500
 
     else:
         return {"message": "Invalid PGN format", "status": "error"}, 400
@@ -50,8 +64,10 @@ async def save_pgn_to_db(pgn_dict: dict):
         pgn_dict (dict): A dictionary containing the PGN data.
     """
     try:
-        # Call the utility function to save PGN data to the database
+        # Ensure all keys in pgn_dict are strings to comply with MongoDB requirements
+        # This includes converting the 'Moves' keys to strings if present
 
+        # Call the utility function to save PGN data to the database
         await chess_utils.save_pgn_to_db(pgn_dict)
     except Exception as e:
         print(f"An error occurred while saving PGN data to the database: {e}")
@@ -137,3 +153,16 @@ async def get_best_move(pgn_string: str, move_no: int):
     best_move, score = chess_utils.get_best_move(game, move_no)
 
     return {"best_move": best_move, "evaluation": score}
+
+
+async def get_analysis_feed():
+    documents = await chess_utils.fetch_all_documents(collection="analysis")
+    for doc in documents:
+        doc.pop("_id", None)
+    return documents
+
+
+async def get_analysis_by_id(pgn_id: str):
+    document = await chess_utils.fetch_analysis(pgn_id=pgn_id)
+    document.pop("_id", None)
+    return document

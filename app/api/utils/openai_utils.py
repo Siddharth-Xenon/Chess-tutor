@@ -2,7 +2,7 @@
 import json_repair
 from openai import AsyncOpenAI
 
-from app.core.config import OPENAIConfig, settings
+from app.core.config import OPENAIConfig
 
 gpt_35_turbo = AsyncOpenAI(
     api_key=OPENAIConfig.OPENAI_KEY,
