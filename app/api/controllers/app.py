@@ -1,10 +1,11 @@
 import re
+from typing import List, Tuple
+
 import chess
 import chess.engine
-import io
 import chess.pgn
+
 from app.api.utils import chess_utils
-from typing import List, Tuple
 
 
 async def delete_this_route() -> dict:
@@ -144,6 +145,7 @@ def moves_to_dict(moves_str: str) -> dict:
         moves_dict[move_number] = individual_moves
     return moves_dict
 
+
 def go_to_move_number(game, move_number):
     """
     Advances the game to a specific move number and returns the board at that position.
@@ -164,7 +166,8 @@ def go_to_move_number(game, move_number):
         board.push(move)
     return board
 
-def get_best_move( game, move_number):
+
+def get_best_move(game, move_number):
     """
     Uses Stockfish to predict the best move at a specified move number in a given game.
 
@@ -177,7 +180,7 @@ def get_best_move( game, move_number):
     """
 
     stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
-    
+
     # Go to the specified move number in the game
     board = game.board()
     for i, move in enumerate(game.mainline_moves(), start=1):
@@ -189,19 +192,24 @@ def get_best_move( game, move_number):
     with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
         # Ask Stockfish for the best move at the current position
         result = engine.play(board, chess.engine.Limit(time=0.1))
-        
+
         # Optional: Get evaluation of the position
         info = engine.analyse(board, chess.engine.Limit(depth=20))
         evaluation = info.get("score", None)
-        
+
     # Convert the evaluation to a more readable format
     if evaluation is not None:
         # Adjust the score for the side to move
-        score = evaluation.white().score(mate_score=100000) if board.turn == chess.WHITE else evaluation.black().score(mate_score=-100000)
+        score = (
+            evaluation.white().score(mate_score=100000)
+            if board.turn == chess.WHITE
+            else evaluation.black().score(mate_score=-100000)
+        )
     else:
         score = None
 
     return result.move.uci(), score
+
 
 def get_best_moves(game) -> List[Tuple[str, int]]:
     """
@@ -215,7 +223,7 @@ def get_best_moves(game) -> List[Tuple[str, int]]:
     """
     stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
     best_moves = []
-    
+
     board = game.board()
     with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
         for move in game.mainline_moves():
@@ -231,7 +239,7 @@ def get_best_moves(game) -> List[Tuple[str, int]]:
                     score = evaluation.white().score(mate_score=10000)
             else:
                 score = "N/A"
-            
+
             best_moves.append((result.move.uci(), score))
-    
+
     return best_moves
