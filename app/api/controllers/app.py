@@ -1,105 +1,67 @@
-import re
+import io
+
 import chess
 import chess.engine
-import io
 import chess.pgn
-from app.api.utils import chess_utils
-from typing import List, Tuple
+from fastapi import HTTPException
+
+from app.api.utils import chess_utils, openai_utils
 
 
 async def delete_this_route() -> dict:
     return {"msg": "This is dummy route to show basic get request"}
 
 
-async def validate_pgn_format(pgn_string: str) -> bool:
+async def analyse_pgn(pgn_string):
     """
-    Validates if the given text is in correct PGN format.
+    Validates if the given string is a valid PGN.
 
-    Args:
-        pgn_string (str): The PGN string to validate.
+    Parameters:
+    - pgn_string (str): The PGN string to be validated.
 
     Returns:
-        bool: True if the PGN format is correct, False otherwise.
+    - A JSON response indicating whether the PGN is valid or not.
     """
+    is_valid_pgn = await chess_utils.validate_pgn_format(pgn_string)
+    if is_valid_pgn:
+        pgn_dict = chess_utils.pgn_to_dict(pgn_string)
 
-    # Define a regular expression pattern for PGN format validation
-    # print(pgn_string)
-    pgn_pattern = r"""
-        (\[Event\s+".*"\]\s*)?
-        (\[Site\s+".*"\]\s*)?
-        (\[Date\s+"\d{4}\.\d{2}\.\d{2}"\]\s*)?
-        (\[Round\s+".*"\]\s*)?
-        (\[White\s+".*"\]\s*)?
-        (\[Black\s+".*"\]\s*)?
-        (\[Result\s+".*"\]\s*)?
-        (\[CurrentPosition\s+".*"\]\s*)?
-        (\[Timezone\s+".*"\]\s*)?
-        (\[ECO\s+".*"\]\s*)?
-        (\[ECOUrl\s+".*"\]\s*)?
-        (\[UTCDate\s+"\d{4}\.\d{2}\.\d{2}"\]\s*)?
-        (\[UTCTime\s+"\d{2}:\d{2}:\d{2}"\]\s*)?
-        (\[WhiteElo\s+"\d*"\]\s*)?
-        (\[BlackElo\s+"\d*"\]\s*)?
-        (\[TimeControl\s+".*"\]\s*)?
-        (\[Termination\s+".*"\]\s*)?
-        (\[StartTime\s+".*"\]\s*)?
-        (\[EndDate\s+"\d{4}\.\d{2}\.\d{2}"\]\s*)?
-        (\[EndTime\s+".*"\]\s*)?
-        (\[Link\s+".*"\]\s*)?
-        (\[WhiteUrl\s+".*"\]\s*)?
-        (\[WhiteCountry\s+".*"\]\s*)?
-        (\[WhiteTitle\s+".*"\]\s*)?
-        (\[BlackUrl\s+".*"\]\s*)?
-        (\[BlackCountry\s+".*"\]\s*)?
-        (\[BlackTitle\s+".*"\]\s*)?
-        (\d+\.\s+([a-zA-Z0-9+]+(\s+[a-zA-Z0-9+]+)?\s*)+)
-    """
+        moves_dict = await chess_utils.pgn_to_moves_dict(pgn_dict["Moves"][0])
+        if "Moves" in pgn_dict:
+            pgn_dict["Moves"] = {str(k): v for k, v in moves_dict.items()}
+        save_result = await save_pgn_to_db(pgn_dict)
+        analysis = await get_best_moves(pgn_string)
+        critical_moments = await chess_utils.get_critical_moments(analysis, pgn_string)
+        critical_moments = {str(k): v for k, v in critical_moments.items()}
+        openai_analysis = await openai_utils.analyze_chess_game(
+            pgn_string, analysis, critical_moments
+        )
+        await chess_utils.save_analysis(
+            analysis,
+            pgn_dict["id"],
+            critical_moments,
+            pgn_dict["Moves"],
+            openai_analysis,
+        )
 
-    # Use VERBOSE flag to allow multi-line regex for better readability
-    match = re.match(pgn_pattern, pgn_string, re.VERBOSE)
+        if save_result:
+            pgn_dict.pop("_id", None)  # Remove ObjectId which is not serializable
+            return {
+                "message": "PGN saved successfully",
+                "data": pgn_dict,
+                "critical_moments": critical_moments,
+                "openai_analysis": openai_analysis,
+            }
 
-    return bool(match)
-
-
-def pgn_to_dict(pgn_string: str) -> dict:
-    """
-    Converts a PGN string to a dictionary with key-value pairs.
-
-    Args:
-        pgn_string (str): The PGN string to convert.
-
-    Returns:
-        dict: A dictionary representation of the PGN string.
-    """
-    pgn_dict = {}
-    pgn_dict["id"] = chess_utils.generate_hex_uuid()
-    # Initialize a list to accumulate move data
-    moves_list = []
-    # Iterate over the string character by character
-    i = 0
-    while i < len(pgn_string):
-        # Check if the current part of the string contains PGN metadata
-        if pgn_string[i] == "[":
-            end_bracket_index = pgn_string.find("]", i)
-            line = pgn_string[i : end_bracket_index + 1]
-            # Extract the key and value
-            key = line.split(" ")[0][1:]
-            value = line.split('"')[1]
-            pgn_dict[key] = value
-            i = end_bracket_index + 1
-        # Accumulate move data if not part of metadata
         else:
-            move_start = i
-            while i < len(pgn_string) and pgn_string[i] != "[":
-                i += 1
-            move_data = pgn_string[move_start:i].strip()
-            if move_data:
-                moves_list.append(move_data)
-            # Skip to the next character without incrementing i as it's already at the start of the next segment or end of string
-    # Add accumulated moves data to the dictionary under a special key, if any
-    if moves_list:
-        pgn_dict["Moves"] = moves_list
-    return pgn_dict
+            return {
+                "message": "Failed to save PGN",
+                "data": pgn_dict,
+                "critical_moments": critical_moments,
+            }, 500
+
+    else:
+        return {"message": "Invalid PGN format", "status": "error"}, 400
 
 
 async def save_pgn_to_db(pgn_dict: dict):
@@ -110,39 +72,16 @@ async def save_pgn_to_db(pgn_dict: dict):
         pgn_dict (dict): A dictionary containing the PGN data.
     """
     try:
-        # Call the utility function to save PGN data to the database
+        # Ensure all keys in pgn_dict are strings to comply with MongoDB requirements
+        # This includes converting the 'Moves' keys to strings if present
 
+        # Call the utility function to save PGN data to the database
         await chess_utils.save_pgn_to_db(pgn_dict)
     except Exception as e:
         print(f"An error occurred while saving PGN data to the database: {e}")
         return False
     return True
 
-
-def moves_to_dict(moves_str: str) -> dict:
-    """
-    Converts a string of moves separated by move identifiers into a dictionary with move numbers as keys.
-
-    Args:
-        moves_str (str): A string of moves separated by identifiers like "1.", "2.", ...
-
-    Returns:
-        dict: A dictionary with move numbers as keys and a list of individual moves as values.
-    """
-    moves_dict = {}
-    # Split the string into individual moves based on the move number identifiers
-    moves_list = [
-        move.strip() for move in re.split(r"\d+\.", moves_str) if move.strip()
-    ]
-    for index, move in enumerate(moves_list, start=1):
-        # The move number is the index in this case
-        move_number = f"{index}."
-        # Split the move into individual parts, might include captures, checks, etc.
-        individual_moves = move.split(" ")
-        # Filter out empty strings that may result from extra spaces
-        individual_moves = [move for move in individual_moves if move]
-        moves_dict[move_number] = individual_moves
-    return moves_dict
 
 def go_to_move_number(game, move_number):
     """
@@ -164,74 +103,74 @@ def go_to_move_number(game, move_number):
         board.push(move)
     return board
 
-def get_best_move( game, move_number):
+
+async def get_best_moves(pgn_string: str):
     """
-    Uses Stockfish to predict the best move at a specified move number in a given game.
+    Finds the best move at each move in the given game and returns them.
 
     Parameters:
-    - game (str): The game.
-    - move_number (int): The move number for which to predict the best move.
+    - pgn_string (str): The PGN string of the game.
 
     Returns:
-    - A tuple of (best move in UCI format, evaluation score).
+    - A list of best moves and their evaluations for each move in the game.
     """
+    pgn_io = io.StringIO(pgn_string)
+    game = chess.pgn.read_game(pgn_io)
 
-    stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
-    
-    # Go to the specified move number in the game
-    board = game.board()
-    for i, move in enumerate(game.mainline_moves(), start=1):
-        board.push(move)
-        if i == move_number:
-            break
+    if game is None:
+        return {"error": "Invalid PGN string"}
 
-    # Initialize the Stockfish engine
-    with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
-        # Ask Stockfish for the best move at the current position
-        result = engine.play(board, chess.engine.Limit(time=0.1))
-        
-        # Optional: Get evaluation of the position
-        info = engine.analyse(board, chess.engine.Limit(depth=20))
-        evaluation = info.get("score", None)
-        
-    # Convert the evaluation to a more readable format
-    if evaluation is not None:
-        # Adjust the score for the side to move
-        score = evaluation.white().score(mate_score=100000) if board.turn == chess.WHITE else evaluation.black().score(mate_score=-100000)
-    else:
-        score = None
+    return await chess_utils.get_best_moves(game)
 
-    return result.move.uci(), score
 
-def get_best_moves(game) -> List[Tuple[str, int]]:
+async def get_board_at_move(move_no: int, pgn_string: str):
     """
-    Analyzes the entire game, predicting the best move at each position.
+    Returns the board state at a specific move number from a given PGN string.
 
     Parameters:
-    - game (chess.pgn.Game): The game to analyze.
+    - move_no (int): The move number to advance to.
+    - pgn_string (str): The PGN string of the game.
 
     Returns:
-    - A list of tuples with best moves in UCI format and their evaluation scores.
+    - A JSON response with the board state at the specified move number.
     """
-    stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
-    best_moves = []
-    
-    board = game.board()
-    with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
-        for move in game.mainline_moves():
+
+    try:
+        pgn_io = io.StringIO(pgn_string)
+        game = chess.pgn.read_game(pgn_io)
+
+        board = game.board()
+        # Iterate through the moves up to the specified move number
+        for i, move in enumerate(game.mainline_moves(), start=1):
+            if i == move_no:
+                break
             board.push(move)
-            result = engine.play(board, chess.engine.Limit(time=0.1))
-            info = engine.analyse(board, chess.engine.Limit(depth=20))
-            evaluation = info.get("score", None)
+        # If the move number exceeds the total moves in the game
+        if move_no > i:
+            raise ValueError("Move number exceeds the total moves in the game.")
+        print(board)
+        return {"fen": board.fen(), "move_no": move_no}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-            if evaluation is not None:
-                if evaluation.is_mate():
-                    score = f"Mate in {abs(evaluation.mate())} by {'White' if evaluation.mate() > 0 else 'Black'}"
-                else:
-                    score = evaluation.white().score(mate_score=10000)
-            else:
-                score = "N/A"
-            
-            best_moves.append((result.move.uci(), score))
-    
-    return best_moves
+
+async def get_best_move(pgn_string: str, move_no: int):
+    pgn_io = io.StringIO(pgn_string)
+    game = chess.pgn.read_game(pgn_io)
+
+    best_move, score = chess_utils.get_best_move(game, move_no)
+
+    return {"best_move": best_move, "evaluation": score}
+
+
+async def get_analysis_feed():
+    documents = await chess_utils.fetch_all_documents(collection="analysis")
+    for doc in documents:
+        doc.pop("_id", None)
+    return documents
+
+
+async def get_analysis_by_id(pgn_id: str):
+    document = await chess_utils.fetch_analysis(pgn_id=pgn_id)
+    document.pop("_id", None)
+    return document

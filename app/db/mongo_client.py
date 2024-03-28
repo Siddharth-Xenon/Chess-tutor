@@ -1,4 +1,5 @@
 """Redis client class utility."""
+
 import asyncio
 import logging
 from typing import Dict, Optional, Union
@@ -12,7 +13,6 @@ from app.core.mongo_config import MongoConfig
 
 
 class ZuMongoClient(object):
-
     mongo_client: AsyncIOMotorClient = None
     databases: Dict[str, Database] = {}
     log: logging.Logger = logging.getLogger(__name__)
@@ -48,6 +48,27 @@ class ZuMongoClient(object):
             raise Exception("Check database name or create db connection")
 
     @classmethod
+    async def count_documents(
+        cls,
+        col: str,
+        filter_data: Dict,
+        db: str = MongoConfig.MONGO_PROD_DATABASE,
+        session: AsyncIOMotorClientSession = None,
+        **kwargs,
+    ) -> int:
+        cls.__check_if_database_present(db)
+        try:
+            return await cls.databases[db][col].count_documents(
+                filter=filter_data, session=session, **kwargs
+            )
+        except Exception as e:
+            if session:
+                session.abort_transaction()
+            exception_utils.log_and_raise_exception(
+                "Unexpected exception", str(e), "Internal Server Error"
+            )
+
+    @classmethod
     async def find_one(
         cls,
         col: str,
@@ -55,7 +76,7 @@ class ZuMongoClient(object):
         project: Dict = None,
         db: str = MongoConfig.MONGO_PROD_DATABASE,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        **kwargs,
     ) -> Union[Dict, None]:
         if project is None:
             project = {}
@@ -80,7 +101,7 @@ class ZuMongoClient(object):
         project: Dict = None,
         db: str = MongoConfig.MONGO_PROD_DATABASE,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        **kwargs,
     ):
         if project is None:
             project = {}
@@ -103,7 +124,8 @@ class ZuMongoClient(object):
         insert_data: Dict,
         db: str = MongoConfig.MONGO_PROD_DATABASE,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        handle_exception: bool = True,
+        **kwargs,
     ) -> results.InsertOneResult:
         cls.__check_if_database_present(db)
         try:
@@ -111,6 +133,8 @@ class ZuMongoClient(object):
                 document=insert_data, session=session, **kwargs
             )
         except Exception as e:
+            if not handle_exception:
+                raise e
             if session:
                 session.abort_transaction()
             exception_utils.log_and_raise_exception(
@@ -124,7 +148,7 @@ class ZuMongoClient(object):
         filter_data: Dict,
         db: str = MongoConfig.MONGO_PROD_DATABASE,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        **kwargs,
     ) -> results.DeleteResult:
         cls.__check_if_database_present(db)
         try:
@@ -147,7 +171,8 @@ class ZuMongoClient(object):
         upsert=False,
         db: str = MongoConfig.MONGO_PROD_DATABASE,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        handle_exception: bool = True,
+        **kwargs,
     ) -> Optional[results.UpdateResult]:
         if update_data is None:
             update_data = {}
@@ -158,9 +183,11 @@ class ZuMongoClient(object):
                 update=update_data,
                 upsert=upsert,
                 session=session,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
+            if not handle_exception:
+                raise e
             if session:
                 session.abort_transaction()
             exception_utils.log_and_raise_exception(
@@ -176,7 +203,7 @@ class ZuMongoClient(object):
         upsert=False,
         db: str = MongoConfig.MONGO_PROD_DATABASE,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        **kwargs,
     ) -> Optional[results.UpdateResult]:
         if update_data is None:
             update_data = {}
@@ -187,7 +214,7 @@ class ZuMongoClient(object):
                 update=update_data,
                 upsert=upsert,
                 session=session,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
             if session:
@@ -203,7 +230,7 @@ class ZuMongoClient(object):
         db: str,
         col: str,
         session: AsyncIOMotorClientSession = None,
-        **kwargs
+        **kwargs,
     ):
         cls.__check_if_database_present(db)
         try:
