@@ -9,6 +9,10 @@ from fastapi import HTTPException
 
 from app.db.mongo_client import ZuMongoClient
 
+from app.core.config import (
+    Stockfish
+)
+
 
 async def validate_pgn_format(pgn_string: str) -> bool:
     """
@@ -193,7 +197,7 @@ async def get_best_move(game, move_number):
     - A tuple of (best move in UCI format, evaluation score).
     """
 
-    stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
+    stockfish_path = Stockfish.STOCKFISH_PATH
 
     # Go to the specified move number in the game
     board = game.board()
@@ -235,7 +239,7 @@ async def get_best_moves(game) -> List[Tuple[str, int]]:
     Returns:
     - A list of tuples with best moves in UCI format and their evaluation scores.
     """
-    stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
+    stockfish_path = Stockfish.STOCKFISH_PATH
     best_moves = []
 
     board = game.board()

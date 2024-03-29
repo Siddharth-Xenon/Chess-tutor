@@ -5,6 +5,7 @@ from typing import List
 
 from dotenv import load_dotenv
 from pydantic import BaseSettings
+import os
 
 load_dotenv(".env")
 
@@ -78,6 +79,16 @@ class OPENAIConfig:
     AZURE_OPENAI_JPEAST_API_BASE: str = env_with_secrets.get(
         "AZURE_OPENAI_JPEAST_API_BASE", ""
     )
+
+class Stockfish:
+    settings = Settings()
+    # Detect the operating system
+    if os.name == 'nt':  # Windows
+        STOCKFISH_PATH:str = env_with_secrets.get('STOCKFISH_WIN')
+        print("In Windows")
+    else:  # Linux and others (assuming Stockfish is primarily used on Windows/Linux)
+        STOCKFISH_PATH:str = env_with_secrets.get('STOCKFISH_LINUX')
+        print("In Linux")
 
 
 class RedisConfig:

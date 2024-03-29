@@ -143,4 +143,4 @@ typings/
 scrapers/
 
 # Chess engine
-stockfish
+stockfish_windows
