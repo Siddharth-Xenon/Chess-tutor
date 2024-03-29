@@ -1,3 +1,4 @@
+import json
 import re
 
 analysis = [
@@ -70,3 +71,27 @@ def get_critical_moments(analysis: str) -> dict:
     critical_moments_dict = {i + 1: moves_dict[i + 1] for i in critical_moments}
     print(critical_moments_dict)
     return critical_moments_dict
+
+
+def reformat_analysis(analysis: dict):
+    reformatted_analysis = []
+    for move_number, explanation in analysis.items():
+        move_exp = {"move": explanation.split(" ")[0], "exp": explanation}
+        reformatted_analysis.append(move_exp)
+    return json.dumps(reformatted_analysis)
+
+
+analysis = {
+    "1": "e4 is a strong opening move as it controls the center and allows for quick development of the bishop and queen.",
+    "2": "e5 is a good response mirroring White's move and also controlling the center.",
+    "3": "Nf3 is a good developing move, bringing out the knight and preparing for castling.",
+    "4": "Nc6 is a solid developing move, bringing out the knight and preparing for castling.",
+    "5": "Bc4 is a good move, developing the bishop and putting pressure on f7.",
+    "6": "Qg5 is a blunder as it puts the queen in an exposed position and allows for Nxg5 winning material.",
+    "7": "Nxg5 is an excellent move, winning a knight and gaining a material advantage.",
+    "8": "Nd8 is a mistake as it blocks the dark-square bishop and hampers Black's development.",
+    "9": "Nc3 is a good move, developing the knight towards the center and preparing for further piece activity.",
+    "10": "d5 is a blunder as it weakens the pawn structure and allows for Qg4 attacking the g7 square.",
+    "11": "Qg4 is a blunder as it allows for Nf6 attacking the queen and gaining tempo.",
+    "12": "1-0 signifies the end of the game with White winning.",
+}

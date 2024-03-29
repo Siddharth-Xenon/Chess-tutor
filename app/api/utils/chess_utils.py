@@ -1,3 +1,4 @@
+import json
 import re
 import uuid
 from typing import List, Tuple
@@ -7,11 +8,8 @@ import chess.engine
 import chess.pgn
 from fastapi import HTTPException
 
+from app.core.config import Stockfish
 from app.db.mongo_client import ZuMongoClient
-
-from app.core.config import (
-    Stockfish
-)
 
 
 async def validate_pgn_format(pgn_string: str) -> bool:
@@ -166,6 +164,7 @@ async def save_analysis(
     critical_moments: dict,
     moves: dict,
     openai_analysis: dict,
+    reformated_analysis,
 ):
     analysis_dict = {
         "id": generate_hex_uuid(),
@@ -174,6 +173,7 @@ async def save_analysis(
         "critical_moments": critical_moments,
         "analysis": analysis,
         "openai_analysis": openai_analysis,
+        "reformated_analysis": reformated_analysis,
     }
 
     try:
@@ -333,3 +333,11 @@ async def fetch_all_documents(collection: str):
 
 async def fetch_analysis(pgn_id: str):
     return await ZuMongoClient.find_one(col="analysis", filter_data={"pgn_id": pgn_id})
+
+
+async def reformat_analysis(analysis: dict):
+    reformatted_analysis = []
+    for move_number, explanation in analysis.items():
+        move_exp = {"move": explanation.split(" ")[0], "exp": explanation}
+        reformatted_analysis.append(move_exp)
+    return json.dumps(reformatted_analysis)

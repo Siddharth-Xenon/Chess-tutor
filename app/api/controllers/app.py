@@ -36,12 +36,14 @@ async def analyse_pgn(pgn_string):
         openai_analysis = await openai_utils.analyze_chess_game(
             pgn_string, analysis, critical_moments
         )
+        reformated_analysis = await chess_utils.reformat_analysis(openai_analysis)
         await chess_utils.save_analysis(
-            analysis,
+            reformated_analysis,
             pgn_dict["id"],
             critical_moments,
             pgn_dict["Moves"],
             openai_analysis,
+            reformated_analysis,
         )
 
         if save_result:
@@ -51,6 +53,7 @@ async def analyse_pgn(pgn_string):
                 "data": pgn_dict,
                 "critical_moments": critical_moments,
                 "openai_analysis": openai_analysis,
+                "reformated_analysis": reformated_analysis,
             }
 
         else:
