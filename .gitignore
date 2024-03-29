@@ -141,6 +141,5 @@ typings/
 
 # End of https://www.gitignore.io/api/node,macos
 scrapers/
-
+analysis.json
 # Chess engine
-stockfish
